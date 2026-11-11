@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FB Admin Panel Pro</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --success-hover: #059669;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --border: #334155;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 30px 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            color: white;
+            letter-spacing: -0.5px;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+        .container {
+            background-color: var(--card-bg);
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            width: 100%;
+            max-width: 550px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+        h2 {
+            color: var(--text-main);
+            margin-top: 0;
+            font-size: 18px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+        }
+        .status-box {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .status-on {
+            background-color: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        .status-on .status-indicator { background-color: var(--success); box-shadow: 0 0 8px var(--success); }
+        .status-off {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        .status-off .status-indicator { background-color: var(--danger); box-shadow: 0 0 8px var(--danger); }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+        .btn-on { background-color: var(--success); color: white; flex: 1; }
+        .btn-on:hover { background-color: var(--success-hover); }
+        .btn-off { background-color: var(--danger); color: white; flex: 1; }
+        .btn-off:hover { background-color: var(--danger-hover); }
+        .btn-approve { background-color: var(--primary); color: white; }
+        .btn-approve:hover { background-color: var(--primary-hover); }
+        .btn-remove { background-color: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); padding: 8px 12px;}
+        .btn-remove:hover { background-color: var(--danger); color: white; }
+        
+        .device-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .device-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .device-id {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 15px;
+            color: var(--primary);
+            font-weight: 600;
+        }
+        .empty-text {
+            color: var(--text-muted);
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+            background: rgba(15, 23, 42, 0.3);
+            border-radius: 8px;
+            border: 1px dashed var(--border);
+        }
+        .input-group {
+            display: flex;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .input-group input {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 15px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .input-group select {
+            padding: 12px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: white;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+        }
+        .input-group select:focus {
+            border-color: var(--primary);
+        }
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .input-group button {
+            border-radius: 6px;
+            margin: 0;
+        }
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+        .badge {
+            background: var(--primary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .badge-danger { background: var(--danger); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Admin Control Panel</h1>
+        <p>Manage App Access & Devices</p>
+    </div>
+
+    <!-- Login Section -->
+    <div id="loginSection" class="container" style="max-width: 400px; margin-top: 20px;">
+        <h2 style="text-align: center; border: none; padding-bottom: 0;">Admin Login</h2>
+        <div class="input-group" style="margin-bottom: 15px;">
+            <input type="password" id="adminPassword" placeholder="Enter Password" style="width: 100%; flex: none;" onkeypress="if(event.key === 'Enter') checkLogin()">
+        </div>
+        <button class="btn-approve" style="width: 100%;" onclick="checkLogin()">Login</button>
+    </div>
+
+    <div id="mainContent" style="display: none; width: 100%; flex-direction: column; align-items: center;">
+        <div class="container" id="globalControlSection">
+            <h2>Global App Control</h2>
+        <div id="statusDisplay" class="status-box" style="display: none;">
+            <div class="status-indicator"></div>
+            App is currently: <span id="currentStatusText">Loading...</span>
+        </div>
+        <div class="controls">
+            <button class="btn-on" onclick="setStatus('ON')">Turn ON App</button>
+            <button class="btn-off" onclick="setStatus('OFF')">Turn OFF App</button>
+        </div>
+    </div>
+
+    <div class="container" id="appCustomizationSection">
+        <h2>App Interface Customization</h2>
+        <div class="controls">
+            <button class="btn-approve" style="width: 100%;" onclick="openBtnModal()">🖋️ Change App Button Names</button>
+        </div>
+    </div>
+
+    <!-- Button Name Change Modal -->
+    <div id="btnModal" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center;">
+        <div class="container" style="max-height: 80vh; overflow-y: auto; position: relative;">
+            <button style="position: absolute; right: 15px; top: 15px; background: transparent; color: white; border: none; font-size: 18px; cursor: pointer;" onclick="closeBtnModal()">✖</button>
+            <h2 style="margin-top: 0;">Customize App Buttons</h2>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">Changes apply to the app in real-time.</p>
+            
+            <div id="btnFormContainer">
+                <p>Loading buttons...</p>
+            </div>
+            
+            <button class="btn-approve" style="width: 100%; margin-top: 15px;" onclick="saveButtonNames()">Save All Changes</button>
+        </div>
+    </div>
+
+    <div class="container" id="deviceApprovalSection">
+        <h2>Device Approval System</h2>
+        
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">Add Device ID manually:</p>
+        <div class="input-group">
+            <input type="text" id="newDeviceName" placeholder="User Name" style="flex: 1; min-width: 120px;">
+            <input type="text" id="newDeviceId" placeholder="Enter Device ID" style="flex: 2; min-width: 150px;">
+            <input type="number" id="durationValue" placeholder="Time" value="1" min="1" style="flex: 1; min-width: 70px;">
+            <select id="durationUnit" style="flex: 1; min-width: 100px;">
+                <option value="minute">Min(s)</option>
+                <option value="hour">Hour(s)</option>
+                <option value="day" selected>Day(s)</option>
+                <option value="lifetime">Lifetime</option>
+            </select>
+            <button class="btn-approve" onclick="addCustomDevice()">Approve</button>
+            <button class="btn-remove" style="border: 1px solid var(--danger); background: var(--danger); color: white;" onclick="banCustomDevice()">Ban</button>
+        </div>
+
+        <div class="section-title">
+            Managed Devices <span id="approvedCount" class="badge">0</span>
+        </div>
+        <div class="input-group" style="margin-bottom: 15px;">
+            <input type="text" id="searchInput" placeholder="Search by Name or Device ID..." onkeyup="filterDevices()" style="width: 100%; font-family: 'Inter', sans-serif;">
+        </div>
+        <ul id="approvedList" class="device-list">
+            <li class="empty-text">Loading...</li>
+        </ul>
+    </div>
+    </div> <!-- End of mainContent -->
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyB4xibLFS3R4zQukGKIGNA6tVzejtfG1a4",
+            authDomain: "fb-lite-pro-vr.firebaseapp.com",
+            databaseURL: "https://fb-lite-pro-vr-default-rtdb.firebaseio.com",
+            projectId: "fb-lite-pro-vr",
+            storageBucket: "fb-lite-pro-vr.firebasestorage.app"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        function checkLogin() {
+            const pwd = document.getElementById('adminPassword').value;
+            const loginSection = document.getElementById('loginSection');
+            const mainContent = document.getElementById('mainContent');
+            const globalControlSection = document.getElementById('globalControlSection');
+            const appCustomizationSection = document.getElementById('appCustomizationSection');
+            const deviceApprovalSection = document.getElementById('deviceApprovalSection');
+
+            if (pwd === "arafat55779911") {
+                loginSection.style.display = 'none';
+                mainContent.style.display = 'flex';
+                globalControlSection.style.display = 'block';
+                appCustomizationSection.style.display = 'none';
+                deviceApprovalSection.style.display = 'none';
+            } else if (pwd === "12345678") {
+                loginSection.style.display = 'none';
+                mainContent.style.display = 'flex';
+                globalControlSection.style.display = 'none';
+                appCustomizationSection.style.display = 'block';
+                deviceApprovalSection.style.display = 'block';
+            } else {
+                alert("Incorrect Password!");
+            }
+        }
+
+        // 1. Listen for Global Status changes
+        const statusRef = database.ref('app_status/status');
+        statusRef.on('value', (snapshot) => {
+            const statusDisplay = document.getElementById('statusDisplay');
+            const currentStatusText = document.getElementById('currentStatusText');
+            statusDisplay.style.display = 'flex';
+            
+            const status = snapshot.val();
+            currentStatusText.innerText = status ? status : "NOT SET";
+            
+            if(status === 'ON') {
+                statusDisplay.className = 'status-box status-on';
+            } else {
+                statusDisplay.className = 'status-box status-off';
+            }
+        });
+
+        function setStatus(newStatus) {
+            database.ref('app_status').set({ status: newStatus })
+            .catch((error) => alert("Failed to update status. Check Firebase Rules."));
+        }
+
+        // 2. Listen for Approved Devices
+        const approvedRef = database.ref('approved_devices');
+        approvedRef.on('value', (snapshot) => {
+            const list = document.getElementById('approvedList');
+            const countBadge = document.getElementById('approvedCount');
+            list.innerHTML = '';
+            
+            if (!snapshot.exists()) {
+                list.innerHTML = '<li class="empty-text">No devices managed yet</li>';
+                countBadge.innerText = '0';
+                return;
+            }
+
+            let count = 0;
+            snapshot.forEach((child) => {
+                const deviceId = child.key;
+                const data = child.val();
+                
+                let isBanned = false;
+                let isExpired = false;
+                let isLegacy = false;
+                let statusText = "";
+                let expiryText = "";
+                let statusColor = "var(--success)";
+                let userName = "Unknown";
+
+                if (data === true || data === "true") {
+                    isLegacy = true;
+                    statusText = "Lifetime";
+                } else if (typeof data === 'object') {
+                    userName = data.name || "Unknown";
+                    if (data.status === 'banned') {
+                        isBanned = true;
+                        statusText = "BANNED";
+                        statusColor = "var(--danger)";
+                    } else if (data.status === 'active') {
+                        if (data.expiry === -1) {
+                            statusText = "Lifetime";
+                        } else if (Date.now() > data.expiry) {
+                            isExpired = true;
+                            statusText = "Expired";
+                            statusColor = "var(--danger)";
+                        } else {
+                            statusText = "Active";
+                            expiryText = "Ends: " + new Date(data.expiry).toLocaleString();
+                        }
+                    }
+                } else {
+                    return; // unknown format
+                }
+                count++;
+
+                const li = document.createElement('li');
+                li.className = 'device-item';
+                li.style.flexDirection = 'column';
+                li.style.alignItems = 'flex-start';
+                li.style.gap = '10px';
+                
+                li.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                        <span class="device-name" style="font-weight: 700; color: white;">${userName}</span>
+                        <span style="font-size: 12px; font-weight: bold; color: ${statusColor}; border: 1px solid ${statusColor}; padding: 2px 6px; border-radius: 4px;">${statusText}</span>
+                    </div>
+                    <div style="font-size: 13px; color: var(--primary); font-family: monospace;" class="device-id-text">${deviceId}</div>
+                    ${expiryText ? `<div style="font-size: 12px; color: var(--text-muted);">${expiryText}</div>` : ''}
+                    <div style="display: flex; gap: 8px; width: 100%; margin-top: 5px;">
+                        <button class="btn-approve" style="padding: 6px 10px; font-size: 12px; background: #f59e0b;" onclick="editDevice('${deviceId}', '${userName}')">🖋️ Edit</button>
+                        ${isBanned 
+                            ? `<button class="btn-approve" style="padding: 6px 10px; font-size: 12px;" onclick="approveDevice('${deviceId}', -1, '${userName}')">Unban (Lifetime)</button>`
+                            : `<button class="btn-remove" style="padding: 6px 10px; font-size: 12px;" onclick="banDevice('${deviceId}', '${userName}')">Ban</button>`
+                        }
+                        <button class="btn-remove" style="padding: 6px 10px; font-size: 12px; background: transparent; border: 1px dashed var(--danger);" onclick="removeApproved('${deviceId}')">Delete</button>
+                    </div>
+                `;
+                list.appendChild(li);
+            });
+            countBadge.innerText = count;
+            
+            if(count === 0) {
+                list.innerHTML = '<li class="empty-text">No devices managed yet</li>';
+            }
+        });
+
+        function addCustomDevice() {
+            const id = document.getElementById('newDeviceId').value.trim();
+            const name = document.getElementById('newDeviceName').value.trim() || "Unknown";
+            const durationValue = parseInt(document.getElementById('durationValue').value) || 1;
+            const durationUnit = document.getElementById('durationUnit').value;
+            
+            if(!id) return alert("Please enter a device ID");
+            
+            let durationMs = -1; // Lifetime
+            if (durationUnit !== 'lifetime') {
+                if (durationValue <= 0) return alert("Please enter a valid time");
+                if (durationUnit === 'minute') durationMs = durationValue * 60 * 1000;
+                else if (durationUnit === 'hour') durationMs = durationValue * 60 * 60 * 1000;
+                else if (durationUnit === 'day') durationMs = durationValue * 24 * 60 * 60 * 1000;
+            }
+
+            approveDevice(id, durationMs, name);
+            document.getElementById('newDeviceId').value = '';
+            document.getElementById('newDeviceName').value = '';
+        }
+
+        function banCustomDevice() {
+            const id = document.getElementById('newDeviceId').value.trim();
+            const name = document.getElementById('newDeviceName').value.trim() || "Unknown";
+            if(!id) return alert("Please enter a device ID");
+            banDevice(id, name);
+            document.getElementById('newDeviceId').value = '';
+            document.getElementById('newDeviceName').value = '';
+        }
+
+        function editDevice(deviceId, currentName) {
+            document.getElementById('newDeviceId').value = deviceId;
+            document.getElementById('newDeviceName').value = currentName !== 'Unknown' ? currentName : '';
+            document.getElementById('durationValue').focus();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function filterDevices() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const items = document.querySelectorAll('#approvedList .device-item');
+            
+            items.forEach(item => {
+                const name = item.querySelector('.device-name').innerText.toLowerCase();
+                const id = item.querySelector('.device-id-text').innerText.toLowerCase();
+                if (name.includes(query) || id.includes(query)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        function approveDevice(deviceId, durationMs, name) {
+            let expiry = -1;
+            if (durationMs !== -1) {
+                expiry = Date.now() + durationMs;
+            }
+            
+            let updates = {};
+            updates['approved_devices/' + deviceId] = {
+                status: 'active',
+                expiry: expiry,
+                name: name || "Unknown"
+            };
+            
+            database.ref().update(updates).catch(e => alert("Error: " + e));
+        }
+
+        function banDevice(deviceId, name) {
+            if(confirm("Ban this device? They will not be able to access the app.")) {
+                let updates = {};
+                updates['approved_devices/' + deviceId] = {
+                    status: 'banned',
+                    expiry: -1,
+                    name: name || "Unknown"
+                };
+                database.ref().update(updates).catch(e => alert("Error: " + e));
+            }
+        }
+
+        function removeApproved(deviceId) {
+            if(confirm("Delete this device record?")) {
+                database.ref('approved_devices/' + deviceId).remove();
+            }
+        }
+
+        // Button Customization Logic
+        const defaultButtons = {
+            btn_bot_creator: "Bot Creator",
+            btn_range: "Range",
+            btn_copy_cookie: "Copy Cookie",
+            btn_copy_uid: "Copy UID",
+            btn_history: "History",
+            btn_cookie_login: "Cookie Login",
+            btn_gmail_copy: "Gmail Copy",
+            btn_fb_login: "FB Login",
+            btn_whoer_ip: "Whoer IP",
+            btn_proxy_config: "Proxy Config",
+            btn_admin_ws: "Admin WS",
+            btn_admin_tg: "Admin TG",
+            btn_tg_channel: "TG Channel",
+            btn_verify: "ভেরিফাই করুন",
+            btn_live_console: "Live Console",
+            btn_settings: "Settings"
+        };
+
+        function openBtnModal() {
+            document.getElementById('btnModal').style.display = 'flex';
+            database.ref('app_config/buttons').once('value').then((snapshot) => {
+                const data = snapshot.val() || {};
+                const formContainer = document.getElementById('btnFormContainer');
+                formContainer.innerHTML = '';
+                
+                for (const key in defaultButtons) {
+                    const value = data[key] || defaultButtons[key];
+                    const labelName = key.replace('btn_', '').replace('_', ' ').toUpperCase();
+                    formContainer.innerHTML += `
+                        <div style="margin-bottom: 10px;">
+                            <label style="display:block; font-size: 12px; margin-bottom: 4px; color: var(--primary);">${labelName}</label>
+                            <input type="text" id="${key}" value="${value}" style="width: 100%; padding: 10px; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border); border-radius: 4px; color: white; font-family: 'Inter'; box-sizing: border-box;">
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        function closeBtnModal() {
+            document.getElementById('btnModal').style.display = 'none';
+        }
+
+        function saveButtonNames() {
+            const updates = {};
+            for (const key in defaultButtons) {
+                const el = document.getElementById(key);
+                if (el) {
+                    updates[key] = el.value.trim() || defaultButtons[key];
+                }
+            }
+            database.ref('app_config/buttons').set(updates).then(() => {
+                alert("Button names updated successfully!");
+                closeBtnModal();
+            }).catch(e => alert("Error: " + e));
+        }
+    </script>
+</body>
+</html>
