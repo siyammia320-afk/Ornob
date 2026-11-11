@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -80,6 +81,9 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -1238,6 +1242,7 @@ private fun getCookieValue(cookieString: String?, key: String): String? {
 fun MainScreen() {
   val context = LocalContext.current
   val activity = context as? Activity
+  val haptic = LocalHapticFeedback.current
   
   var dynamicButtons by remember { mutableStateOf(ButtonNames()) }
 
@@ -1838,6 +1843,29 @@ fun MainScreen() {
   var showSetRangeDialog by rememberSaveable { mutableStateOf(savedActiveDialog == "range") }
   var showSettingsDialog by rememberSaveable { mutableStateOf(savedActiveDialog == "settings") }
   var showLiveConsoleDialog by rememberSaveable { mutableStateOf(savedActiveDialog == "console") }
+  var showMusicDialog by rememberSaveable { mutableStateOf(savedActiveDialog == "music") }
+  val isMusicPlaying by MusicManager.isPlaying.collectAsState()
+
+  val musicInfiniteTrans = rememberInfiniteTransition(label = "music_global_anim")
+  val musicIconRotate by musicInfiniteTrans.animateFloat(
+    initialValue = 0f,
+    targetValue = 360f,
+    animationSpec = infiniteRepeatable(
+      animation = tween(2800, easing = LinearEasing),
+      repeatMode = RepeatMode.Restart
+    ),
+    label = "music_rot"
+  )
+  val musicPulseScale by musicInfiniteTrans.animateFloat(
+    initialValue = 0.93f,
+    targetValue = 1.07f,
+    animationSpec = infiniteRepeatable(
+      animation = tween(650, easing = FastOutSlowInEasing),
+      repeatMode = RepeatMode.Reverse
+    ),
+    label = "music_scale"
+  )
+
   var isDesktopMode by remember { mutableStateOf(prefs.getBoolean("is_desktop_mode", false)) }
   var isProxyEnabled by remember { mutableStateOf(prefs.getBoolean("is_proxy_enabled", false)) }
   var dnsServer by remember { mutableStateOf("8.8.8.8") }
@@ -1865,7 +1893,7 @@ fun MainScreen() {
   var selectedCountry by remember { mutableStateOf(prefs.getString("selected_country", "Bangladesh") ?: "Bangladesh") }
 
   // Sync active dialog state so returning from background keeps user in current section
-  LaunchedEffect(showCreatorDialog, showHistoryDialog, showCookieLoginDialog, showSetRangeDialog, showSettingsDialog, showLiveConsoleDialog, showProxyConfigDialog) {
+  LaunchedEffect(showCreatorDialog, showHistoryDialog, showCookieLoginDialog, showSetRangeDialog, showSettingsDialog, showLiveConsoleDialog, showProxyConfigDialog, showMusicDialog) {
     val active = when {
       showCreatorDialog -> "creator"
       showHistoryDialog -> "history"
@@ -1874,6 +1902,7 @@ fun MainScreen() {
       showSettingsDialog -> "settings"
       showLiveConsoleDialog -> "console"
       showProxyConfigDialog -> "proxy"
+      showMusicDialog -> "music"
       else -> "none"
     }
     prefs.edit().putString("active_dialog", active).apply()
@@ -2111,6 +2140,12 @@ fun MainScreen() {
       }
     )
   }
+
+  if (showMusicDialog) {
+    MusicDialog(
+      onDismiss = { showMusicDialog = false }
+    )
+  }
   
   Scaffold(
     contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -2329,7 +2364,7 @@ fun MainScreen() {
               .padding(horizontal = 2.dp, vertical = 2.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)
           ) {
-            // Quick Access Thumb-Level Row: Live Console & Settings
+            // Quick Access Thumb-Level Row: Live Console, Music & Settings
             Row(
               modifier = Modifier
                 .fillMaxWidth()
@@ -2346,9 +2381,9 @@ fun MainScreen() {
                 ),
                 border = BorderStroke(1.dp, Color(0xFF00E5FF)),
                 shape = RoundedCornerShape(4.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
                 modifier = Modifier
-                  .weight(1.3f)
+                  .weight(1.1f)
                   .height(30.dp)
               ) {
                 Row(
@@ -2361,10 +2396,53 @@ fun MainScreen() {
                     tint = Color(0xFF00E5FF),
                     modifier = Modifier.size(14.dp)
                   )
-                  Spacer(Modifier.width(5.dp))
+                  Spacer(Modifier.width(4.dp))
                   Text(
                     text = dynamicButtons.btn_live_console,
                     color = Color(0xFF00E5FF),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    maxLines = 1
+                  )
+                }
+              }
+
+              // Music Player Button (Cyber Neon Rose Card with Animation & Haptic)
+              Button(
+                onClick = {
+                  haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                  showMusicDialog = true
+                },
+                colors = ButtonDefaults.buttonColors(
+                  containerColor = if (isMusicPlaying) Color(0xFF35082A) else Color(0xFF1E0A1A),
+                  contentColor = if (isMusicPlaying) Color(0xFFFF2A85) else Color(0xFFFB7185)
+                ),
+                border = BorderStroke(1.dp, if (isMusicPlaying) Color(0xFFFF2A85) else Color(0xFFE11D48)),
+                shape = RoundedCornerShape(4.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                modifier = Modifier
+                  .weight(1.1f)
+                  .height(30.dp)
+              ) {
+                Row(
+                  verticalAlignment = Alignment.CenterVertically,
+                  horizontalArrangement = Arrangement.Center
+                ) {
+                  Icon(
+                    imageVector = Icons.Default.MusicNote,
+                    contentDescription = "Music Player",
+                    tint = if (isMusicPlaying) Color(0xFFFF2A85) else Color(0xFFFB7185),
+                    modifier = Modifier
+                      .size(14.dp)
+                      .then(
+                        if (isMusicPlaying) Modifier.rotate(musicIconRotate).scale(musicPulseScale)
+                        else Modifier
+                      )
+                  )
+                  Spacer(Modifier.width(4.dp))
+                  Text(
+                    text = if (isMusicPlaying) "Playing" else "Music",
+                    color = if (isMusicPlaying) Color(0xFFFF2A85) else Color(0xFFFB7185),
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
                     maxLines = 1
@@ -2381,9 +2459,9 @@ fun MainScreen() {
                 ),
                 border = BorderStroke(1.dp, Color(0xFFA855F7)),
                 shape = RoundedCornerShape(4.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
                 modifier = Modifier
-                  .weight(1f)
+                  .weight(0.9f)
                   .height(30.dp)
               ) {
                 Row(
@@ -2396,7 +2474,7 @@ fun MainScreen() {
                     tint = Color(0xFFA855F7),
                     modifier = Modifier.size(14.dp)
                   )
-                  Spacer(Modifier.width(5.dp))
+                  Spacer(Modifier.width(4.dp))
                   Text(
                     text = "Settings",
                     color = Color(0xFFA855F7),
@@ -2973,6 +3051,112 @@ fun MainScreen() {
               .fillMaxSize()
               .testTag("webview")
           )
+        }
+
+        // Floating Animated Circular Music Button on the Left Side of the Screen (User requested round icon on left)
+        Box(
+          modifier = Modifier
+            .align(Alignment.CenterStart)
+            .padding(start = 10.dp)
+        ) {
+          // Radiant pulsing outer glow aura when playing
+          if (isMusicPlaying) {
+            Box(
+              modifier = Modifier
+                .size(64.dp)
+                .align(Alignment.Center)
+                .scale(musicPulseScale)
+                .background(
+                  brush = Brush.radialGradient(
+                    colors = listOf(
+                      Color(0xFFFF2A85).copy(alpha = 0.6f),
+                      Color(0xFFA855F7).copy(alpha = 0.35f),
+                      Color.Transparent
+                    )
+                  ),
+                  shape = CircleShape
+                )
+            )
+          }
+
+          // Main Round Button with Cyber Neon Gradient Border
+          Surface(
+            onClick = {
+              haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+              showMusicDialog = true
+            },
+            shape = CircleShape,
+            color = if (isMusicPlaying) Color(0xFF1E0720) else Color(0xFF0F1420),
+            border = BorderStroke(
+              width = if (isMusicPlaying) 2.5.dp else 1.5.dp,
+              brush = if (isMusicPlaying) {
+                Brush.sweepGradient(
+                  listOf(
+                    Color(0xFFFF2A85),
+                    Color(0xFFA855F7),
+                    Color(0xFF00E5FF),
+                    Color(0xFFFF2A85)
+                  )
+                )
+              } else {
+                Brush.linearGradient(
+                  listOf(
+                    Color(0xFFF43F5E),
+                    Color(0xFF8B5CF6)
+                  )
+                )
+              }
+            ),
+            shadowElevation = 10.dp,
+            modifier = Modifier
+              .size(52.dp)
+              .testTag("floating_round_music_button")
+          ) {
+            Box(
+              contentAlignment = Alignment.Center,
+              modifier = Modifier.fillMaxSize()
+            ) {
+              // Glowing background disc ring
+              Box(
+                modifier = Modifier
+                  .size(38.dp)
+                  .background(
+                    brush = if (isMusicPlaying) Brush.radialGradient(
+                      listOf(Color(0xFF3B0B32), Color(0xFF130718))
+                    ) else Brush.radialGradient(
+                      listOf(Color(0xFF1E293B), Color(0xFF0F172A))
+                    ),
+                    shape = CircleShape
+                  )
+              )
+
+              // Vinyl / Music Note Animated Rotating Icon
+              Icon(
+                imageVector = Icons.Default.MusicNote,
+                contentDescription = "Music Player",
+                tint = if (isMusicPlaying) Color(0xFFFF2A85) else Color(0xFFFB7185),
+                modifier = Modifier
+                  .size(26.dp)
+                  .then(
+                    if (isMusicPlaying) Modifier
+                      .rotate(musicIconRotate)
+                      .scale(musicPulseScale)
+                    else Modifier
+                  )
+              )
+
+              // Small Active Equalizer / Notification Badge dot on top-right
+              if (isMusicPlaying) {
+                Box(
+                  modifier = Modifier
+                    .size(8.dp)
+                    .align(Alignment.TopEnd)
+                    .offset(x = (-8).dp, y = 8.dp)
+                    .background(Color(0xFF00E5FF), CircleShape)
+                )
+              }
+            }
+          }
         }
       }
     }
